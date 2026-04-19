@@ -34,60 +34,68 @@ int main() {
     };
 
     int numSizes = sizeof(sizes) / sizeof(sizes[0]);
+    const int RUNS = 10;
 
-    const int RUNS = 5;
-
-    // ===== TABLE HEADER =====
-    std::cout << "-----------------------------------------------------------\n";
-    std::cout << "| Size (MB) | Avg Time (ms) | Bandwidth (GB/s)           |\n";
-    std::cout << "-----------------------------------------------------------\n";
+    std::cout << "-------------------------------------------------------------------------------------------------------------\n";
+    std::cout << "| Size(MB) | Time_P(ms) | Time_Pin(ms) | BW_P(GB/s) | BW_Pin(GB/s) | Speedup                                |\n";
+    std::cout << "-------------------------------------------------------------------------------------------------------------\n";
 
     for (int i = 0; i < numSizes; i++) {
 
         size_t size = sizes[i];
         size_t N = size / sizeof(float);
 
-        float* h_A = (float*)malloc(size);
         float* d_A;
-
-        cudaError_t err = cudaMalloc(&d_A, size);
-
-        if (err != cudaSuccess) {
-            std::cout << "| " << std::setw(9) << (size / (1024*1024))
-                      << " |   SKIPPED (no VRAM)                |\n";
-            free(h_A);
+        if (cudaMalloc(&d_A, size) != cudaSuccess) {
+            std::cout << "| " << std::setw(8) << (size / (1024*1024))
+                      << " | SKIPPED (no VRAM)\n";
             continue;
         }
 
-        // initialize
-        for (size_t j = 0; j < N; j++) {
-            h_A[j] = 1.0f;
-        }
+        // ===== PAGEABLE =====
+        float* h_pageable = (float*)malloc(size);
+        for (size_t j = 0; j < N; j++) h_pageable[j] = 1.0f;
 
-        // warm-up
-        cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_A, h_pageable, size, cudaMemcpyHostToDevice);
 
-        float total_ms = 0.0f;
+        float total_pageable = 0;
+        for (int r = 0; r < RUNS; r++)
+            total_pageable += runMemcpy(h_pageable, d_A, size);
 
-        for (int r = 0; r < RUNS; r++) {
-            total_ms += runMemcpy(h_A, d_A, size);
-        }
+        float avg_pageable = total_pageable / RUNS;
+        float bw_pageable = (size / 1e9f) / (avg_pageable / 1e3f);
 
-        float avg_ms = total_ms / RUNS;
+        // ===== PINNED =====
+        float* h_pinned;
+        cudaHostAlloc(&h_pinned, size, cudaHostAllocDefault);
 
-        float gb = size / 1e9f;
-        float bandwidth = gb / (avg_ms / 1e3f);
+        for (size_t j = 0; j < N; j++) h_pinned[j] = 1.0f;
+
+        cudaMemcpy(d_A, h_pinned, size, cudaMemcpyHostToDevice);
+
+        float total_pinned = 0;
+        for (int r = 0; r < RUNS; r++)
+            total_pinned += runMemcpy(h_pinned, d_A, size);
+
+        float avg_pinned = total_pinned / RUNS;
+        float bw_pinned = (size / 1e9f) / (avg_pinned / 1e3f);
+
+        float speedup = bw_pinned / bw_pageable;
 
         std::cout << "| "
-                  << std::setw(9) << (size / (1024*1024)) << " | "
-                  << std::setw(13) << avg_ms << " | "
-                  << std::setw(25) << bandwidth << " |\n";
+                  << std::setw(8) << (size / (1024*1024)) << " | "
+                  << std::setw(10) << avg_pageable << " | "
+                  << std::setw(12) << avg_pinned << " | "
+                  << std::setw(11) << bw_pageable << " | "
+                  << std::setw(13) << bw_pinned << " | "
+                  << std::setw(10) << speedup << "x |\n";
 
         cudaFree(d_A);
-        free(h_A);
+        free(h_pageable);
+        cudaFreeHost(h_pinned);
     }
 
-    std::cout << "-----------------------------------------------------------\n";
+    std::cout << "-------------------------------------------------------------------------------------------------------------\n";
 
     return 0;
 }
