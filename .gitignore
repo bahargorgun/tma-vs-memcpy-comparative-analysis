@@ -1,0 +1,15 @@
+# Build artifacts
+bench_1d
+bench_2d
+bench_overlap
+bench_gemm
+bench_small
+bench
+
+# Results (user-generated; commit selectively if desired)
+results/*.csv
+
+# Editor/OS
+*.o
+*.d
+.DS_Store
