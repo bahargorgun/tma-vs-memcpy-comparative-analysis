@@ -1,0 +1,13 @@
+benchmark,N,method,avg_time_ms,gflops
+gemm,512,global,0.0494861,5424.46
+gemm,512,cp.async,0.0403259,6656.66
+gemm,512,TMA,0.0388301,6913.07
+gemm,1024,global,0.334335,6423.15
+gemm,1024,cp.async,0.260679,8238.04
+gemm,1024,TMA,0.234945,9140.38
+gemm,2048,global,2.61996,6557.3
+gemm,2048,cp.async,2.01593,8522.06
+gemm,2048,TMA,1.7548,9790.24
+gemm,4096,global,21.201,6482.65
+gemm,4096,cp.async,16.0708,8552.1
+gemm,4096,TMA,15.4999,8867.07

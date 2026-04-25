@@ -1,0 +1,5 @@
+benchmark,method,avg_time_ms,bw_gbs
+overlap,cp.async,0.352249,762.062
+overlap,TMA,0.387325,693.049
+overlap_ref,sequential,5.20834,51.5395
+overlap_ref,async,4.87421,55.0726
